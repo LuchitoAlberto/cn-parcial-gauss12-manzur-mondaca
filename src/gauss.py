@@ -26,7 +26,7 @@ def leer_vector_b(ruta="datos/vector_b.csv"):
     assert len(b) == 12, "b no contiene 12 valores"
     return b
 
-def eliminar_sin_pivoteo(A, b, convertir=float):
+def eliminar(A, b, convertir=float, pivotear=False):
     n = len(A)
 
     # Copias de la matriz A y el vector b segun el tipo de dato elegido
@@ -58,10 +58,51 @@ def eliminar_sin_pivoteo(A, b, convertir=float):
     traza = []
     operaciones = []
 
+    # Escala de cada fila con su elemento en valor absoluto mas grande
+    escalas = []
+    for fila in U:
+        mayor = convertir(0)
+        for valor in fila:
+            mayor = max(mayor, abs(valor))
+        escalas.append(mayor)
+
+    permutacion = list(range(n)) # Cada indice es el indice de la fila original que ahora se encuentra en la posicion i
+    comparaciones = 0
+    intercambios = 0
+    divisiones_pivoteo = 0
+
     # Triangulacion inferior / Eliminacion hacia adelante
     for k in range(n-1):
         mult_div = 0
         suma_resta = 0
+
+        if pivotear:
+            # Elegimos la fila con mejor razon para evitar que numeros grandes ganen
+            fila_pivote = k
+            mejor_razon = abs(U[k][k] / escalas[k])
+            divisiones_pivoteo += 1
+            for i in range(k + 1, n):
+                razon = abs(U[i][k] / escalas[i])
+                divisiones_pivoteo += 1
+                comparaciones += 1
+                if razon > mejor_razon:
+                    mejor_razon = razon
+                    fila_pivote = i
+
+            if fila_pivote != k:
+                # Intercambiamos todas las filas correspondientes
+                U[k], U[fila_pivote] = U[fila_pivote], U[k]
+                c[k], c[fila_pivote] = c[fila_pivote], c[k]
+                escalas[k], escalas[fila_pivote] = escalas[fila_pivote], escalas[k]
+                permutacion[k], permutacion[fila_pivote] = permutacion[fila_pivote], permutacion[k]
+
+                # Los multiplicadores que ya estan en L viajan con su fila
+                for j in range(k):
+                    temporal = L[k][j]
+                    L[k][j] = L[fila_pivote][j]
+                    L[fila_pivote][j] = temporal
+                intercambios += 1
+
         for i in range(k + 1, n):
             # Calculamos el multiplicador de la fila
             m = U[i][k] / U[k][k]
@@ -110,40 +151,56 @@ def eliminar_sin_pivoteo(A, b, convertir=float):
         "crecimiento": crecimiento,
         "traza": traza,
         "operaciones": operaciones,
+        "permutacion": permutacion,
+        "comparaciones": comparaciones,
+        "intercambios": intercambios,
+        "divisiones_pivoteo": divisiones_pivoteo,
     }
 
 if __name__ == "__main__":
     A = leer_matriz_a()
     b = leer_vector_b()
 
-    exacto = eliminar_sin_pivoteo(A, b, Fraction) # Sin error de redondeo
-    doble = eliminar_sin_pivoteo(A, b, float) # Eliminacion real
-
-    # Comprobamos si L * U resultan en A
     n = 12
-    for i in range(n):
-        for j in range(n):
-            producto = 0
-            for k in range(n):
-                producto += (exacto["L"][i][k] * exacto["U"][k][j])
-            assert producto == A[i][j], f"L * U no es lo mismo que A en ({i}, {j})"
+    # La solucion exacta (Fraction) no depende del pivoteo: es la referencia para ambas corridas
+    exacto = eliminar(A, b, Fraction)
+    exacto_piv = eliminar(A, b, Fraction, pivotear=True)
 
-    # Comprobamos los 66 0's bajo la diagonal
-    ceros = 0
-    for i in range(n):
-        for j in range(i):
-            if exacto["U"][i][j] == 0:
-                ceros += 1
-    assert ceros == 66, f"No hay 66 0's bajo la diagonal, hay {ceros}"
+    for nombre, corrida in [("sin pivoteo", exacto), ("con pivoteo", exacto_piv)]:
+        # Comprobamos que L * U reconstruye A (con pivoteo, A con las filas permutadas)
+        for i in range(n):
+            for j in range(n):
+                producto = 0
+                for k in range(n):
+                    producto += (corrida["L"][i][k] * corrida["U"][k][j])
+                assert producto == A[corrida["permutacion"][i]][j], f"{nombre}: L * U no coincide con A en ({i}, {j})"
 
-    print("multiplicador_max: %.3e" % doble["multiplicador_max"])
-    print("crecimiento:       %.3e" % doble["crecimiento"])
+        # Comprobamos los 66 0's bajo la diagonal
+        ceros = 0
+        for i in range(n):
+            for j in range(i):
+                if corrida["U"][i][j] == 0:
+                    ceros += 1
+        assert ceros == 66, f"{nombre}: no hay 66 0's bajo la diagonal, hay {ceros}"
+
+    # Ambas soluciones exactas deben ser identicas
+    for i in range(n):
+        assert exacto["x"][i] == exacto_piv["x"][i], f"x[{i}] difiere entre corridas exactas"
+
+    doble = eliminar(A, b, float)
+    doble_piv = eliminar(A, b, float, pivotear=True)
+
+    print("                    sin pivoteo   con pivoteo")
+    print("multiplicador_max:  %.3e    %.3e" % (doble["multiplicador_max"], doble_piv["multiplicador_max"]))
+    print("crecimiento:        %.3e    %.3e" % (doble["crecimiento"], doble_piv["crecimiento"]))
+    print("comparaciones: %d, intercambios: %d, divisiones de pivoteo: %d" % (
+        doble_piv["comparaciones"], doble_piv["intercambios"], doble_piv["divisiones_pivoteo"]))
     print()
-    print(" i |          x_i (float)          | error relativo")
-    print("---+-------------------------------+---------------")
+    print(" i |   error relativo sin pivoteo | error relativo con pivoteo")
+    print("---+------------------------------+---------------------------")
     for i in range(n):
         xe = exacto["x"][i]
-        xd = doble["x"][i]
-        error = abs((xd - xe) / xe)
+        error_sin = abs((doble["x"][i] - xe) / xe)
+        error_con = abs((doble_piv["x"][i] - xe) / xe)
         # i + 1 para que se vea x1..x12, como en el enunciado
-        print("%2d | %29.17e | %.2e" % (i + 1, xd, error))
+        print("%2d | %28.2e | %.2e" % (i + 1, error_sin, error_con))
