@@ -11,14 +11,14 @@ class RegistroPaso:
     divisiones_escala:int = 0
     intercambios_de_filas:int = 0
     fila_pivote_elegida:int = 0
-    multiplicador_max_paso:int = 0
+    multiplicador_max_paso:float = 0.0 # El multiplicador es un decimal, no un entero
 
-    def multi_divi(self) -> int: 
+    def multi_divi(self) -> int:
         return self.divisiones + self.multiplicaciones # Multiplicaciones + divisiones del paso
 
-    def total_arithmetic_operations(self) -> int:
+    def total_aritmeticas(self) -> int:
         return self.divisiones + self.multiplicaciones + self.sumasyrestas # Total de flops aritmeticos del paso (sin el pivoteo)
-    
+
 @dataclass
 class ContadorOperaciones:
     n:int
@@ -93,10 +93,16 @@ def generar_reporte_flops(contador_sin: ContadorOperaciones, contador_con: Conta
     reuso_lu = contador_con.sust_prog_reutilizacion_flops + contador_con.sust_reg_reutilizacion_flops
 
     lineas: list[str] = []
-    lineas.append(f"== Conteo de Operaciones == ")
+    lineas.append("# Conteo de operaciones")
+    lineas.append("")
+
+    # Declaramos la convencion para que se sepa que se esta contando
+    lineas.append("Convención: 1 flop = 1 operación elemental (suma, resta, multiplicación o división).")
+    lineas.append("Incluye la actualización de b y la sustitución regresiva. El pivoteo se reporta aparte.")
+    lineas.append("")
 
     # Tabla por paso
-    lineas.append("==== Costo por paso =====")
+    lineas.append("## Costo por paso (corrida con pivoteo)")
     lineas.append("")
     lineas.append("| Paso k | Filas por eliminar | Divisiones | Multiplicaciones | Total mul/div | Total sumas/restas | Total flops del paso | Comparaciones de pivote | Divisiones de escala | Intercambios de fila |")
     lineas.append("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |")
@@ -106,20 +112,34 @@ def generar_reporte_flops(contador_sin: ContadorOperaciones, contador_con: Conta
         fila_md = f"| {reg.paso} | {filas_restantes} | {reg.divisiones} | {reg.multiplicaciones} | {reg.multi_divi()} | {reg.sumasyrestas} | {reg.total_aritmeticas()} | {reg.comparaciones_pivoteo} | {reg.divisiones_escala} | {reg.intercambios_de_filas} |"
         lineas.append(fila_md)
 
-    lineas.extend([
-        "",
-        "==== Totales ====",
-        "",
-        "| Fase / corrida | Multi/div | Sumas/restas | Total|",
-        "| ---: | ---: | ---: | ---: |",
-        f"| Eliminación (11 pasos) | {contador_con.total.eliminacion_mul_div()} | {contador_con.total_eliminacion_sumas_resta()} | {contador_con.total_elimin()} |",
-        f"| Sustitución regresiva | {contador_con.total_sust_reg_mul_div()} | {contador_con.sust_reg_restas} | {contador_con.total_sust_reg()} |",
-        f"| Total sin pivoteo | {contador_sin.total_multi_divi_sistema()} | {contador_sin.total_suma_resta_sistema()} | {contador_sin.total_flops_sistema()} |",
-        f"| Total con pivoteo | {contador_con.total_multi_divi_sistema()} | {contador_con.total_suma_resta_sistema()} | {total_con} |",
-        f"Comparaciones pivoteo: {contador_con.total_comparaciones_iniciales_escala} + {contador_con.total_comparaciones_en_pasos()} = {contador_con.total_comparaciones_pivoteo()}",
-        f"Divisiones de escala: {contador_con.total_divisiones_escala()}",
-        f"Intercambios de fila: {contador_con.total_intercambios_de_filas()}",
-        f"Cota referencia: {cota_referencia}: {total_con} ({diferencia_pct:.2f}%)",
-        f"Reutilizacion LU: {reuso_lu} flops"
-       ])
-    return 
+    # Totales de cada fase y de cada corrida
+    lineas.append("")
+    lineas.append("## Totales")
+    lineas.append("")
+    lineas.append("| Fase / corrida | Mul/div | Sumas/restas | Total |")
+    lineas.append("| --- | ---: | ---: | ---: |")
+    lineas.append(f"| Eliminación (11 pasos) | {contador_con.total_eliminacion_mul_div()} | {contador_con.total_eliminacion_sumas_resta()} | {contador_con.total_elimin()} |")
+    lineas.append(f"| Sustitución regresiva | {contador_con.total_sust_reg_mul_div()} | {contador_con.sust_reg_restas} | {contador_con.total_sust_reg()} |")
+    lineas.append(f"| Total sin pivoteo | {contador_sin.total_multi_divi_sistema()} | {contador_sin.total_suma_resta_sistema()} | {contador_sin.total_flops_sistema()} |")
+    lineas.append(f"| Total con pivoteo | {contador_con.total_multi_divi_sistema()} | {contador_con.total_suma_resta_sistema()} | {total_con} |")
+
+    # El pivoteo va aparte porque es un sobrecosto de estabilidad, no de la eliminacion
+    lineas.append("")
+    lineas.append("## Sobrecosto del pivoteo (aparte)")
+    lineas.append("")
+    lineas.append(f"- Comparaciones: {contador_con.comparaciones_iniciales_escala} (escalas) + {contador_con.total_comparaciones_en_pasos()} (pasos) = {contador_con.total_comparaciones_pivoteo()}")
+    lineas.append(f"- Divisiones de escala: {contador_con.total_divisiones_escala()}")
+    lineas.append(f"- Intercambios de fila: {contador_con.total_intercambios_de_filas()}")
+    lineas.append("")
+    lineas.append(f"Cota de referencia: {cota_referencia} flops. Medido: {total_con} ({diferencia_pct:+.2f} %).")
+
+    # Flops de las resoluciones extra (refinamiento y kappa) que reusan L y U en vez de eliminar otra vez
+    lineas.append(f"Flops reutilizados de L y U: {reuso_lu} ({contador_con.sust_prog_reutilizacion_flops} progresiva + {contador_con.sust_reg_reutilizacion_flops} regresiva)")
+    lineas.append("Se calculan despues de la eliminacion, por eso no entran en el total de flops de arriba.")
+
+    # Unimos todo en un solo texto y lo guardamos en el archivo
+    texto = "\n".join(lineas) + "\n"
+    ruta_salida = Path(ruta_salida)
+    ruta_salida.parent.mkdir(parents=True, exist_ok=True)
+    ruta_salida.write_text(texto, encoding="utf-8")
+    return texto

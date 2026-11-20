@@ -1,5 +1,6 @@
 import csv
 from fractions import Fraction
+from conteo import ContadorOperaciones
 
 def leer_csv(ruta):
     filas = []
@@ -58,12 +59,16 @@ def eliminar(A, b, convertir=float, pivotear=False):
     traza = []
     operaciones = []
 
+    # El contador lleva la cuenta real de las operaciones, paso por paso
+    contador = ContadorOperaciones(n)
+
     # Escala de cada fila con su elemento en valor absoluto mas grande
     escalas = []
     for fila in U:
         mayor = convertir(0)
         for valor in fila:
             mayor = max(mayor, abs(valor))
+            contador.comparaciones_iniciales_escala += 1 # Cada elemento se compara una vez con el mayor
         escalas.append(mayor)
 
     permutacion = list(range(n)) # Cada indice es el indice de la fila original que ahora se encuentra en la posicion i
@@ -76,15 +81,21 @@ def eliminar(A, b, convertir=float, pivotear=False):
         mult_div = 0
         suma_resta = 0
 
+        # Abrimos el registro del paso (se numeran desde 1, igual que en el enunciado)
+        registro = contador.iniciar_paso(k + 1)
+
         if pivotear:
             # Elegimos la fila con mejor razon para evitar que numeros grandes ganen
             fila_pivote = k
             mejor_razon = abs(U[k][k] / escalas[k])
             divisiones_pivoteo += 1
+            registro.divisiones_escala += 1 # El pivoteo se cuenta aparte, no entra en los flops
             for i in range(k + 1, n):
                 razon = abs(U[i][k] / escalas[i])
                 divisiones_pivoteo += 1
+                registro.divisiones_escala += 1
                 comparaciones += 1
+                registro.comparaciones_pivoteo += 1
                 if razon > mejor_razon:
                     mejor_razon = razon
                     fila_pivote = i
@@ -102,19 +113,27 @@ def eliminar(A, b, convertir=float, pivotear=False):
                     L[k][j] = L[fila_pivote][j]
                     L[fila_pivote][j] = temporal
                 intercambios += 1
+                registro.intercambios_de_filas += 1
+
+            # Guardamos que fila quedo como pivote (contada desde 1)
+            registro.fila_pivote_elegida = fila_pivote + 1
 
         for i in range(k + 1, n):
             # Calculamos el multiplicador de la fila
             m = U[i][k] / U[k][k]
             mult_div += 1
+            registro.divisiones += 1 # El multiplicador es una division, se calcula una sola vez por fila
             L[i][k] = m
             multiplicador_max = max(multiplicador_max, abs(m))
+            registro.multiplicador_max_paso = max(registro.multiplicador_max_paso, float(abs(m)))
 
             # Restamos (m * fila k) a la fila i solo desde la columna k+1 puesto que todo lo que queda a la izquierda es 0
             for j in range(k + 1, n):
                 U[i][j] = U[i][j] - (m * U[k][j])
                 mult_div += 1
                 suma_resta += 1
+                registro.multiplicaciones += 1 # Una multiplicacion y una resta por elemento
+                registro.sumasyrestas += 1
                 mayor_elemento = max(mayor_elemento, abs(U[i][j]))
 
             # El elemento (i, k) queda en 0
@@ -124,6 +143,8 @@ def eliminar(A, b, convertir=float, pivotear=False):
             c[i] = c[i] - (m * c[k])
             mult_div += 1
             suma_resta += 1
+            registro.multiplicaciones += 1
+            registro.sumasyrestas += 1
 
         operaciones.append([mult_div, suma_resta])
         traza.append([fila[:] for fila in U])
@@ -138,8 +159,11 @@ def eliminar(A, b, convertir=float, pivotear=False):
             suma = suma - U[i][j] * x[j]
             mult_div += 1
             suma_resta += 1
+            contador.sust_reg_multiplicaciones += 1 # La sustitucion tambien se cuenta, pero en su propia fase
+            contador.sust_reg_restas += 1
         x[i] = suma / U[i][i]
         mult_div += 1
+        contador.sust_reg_divisiones += 1
     operaciones.append([mult_div, suma_resta])
 
     # Factor de crecimiento
@@ -155,6 +179,7 @@ def eliminar(A, b, convertir=float, pivotear=False):
         "comparaciones": comparaciones,
         "intercambios": intercambios,
         "divisiones_pivoteo": divisiones_pivoteo,
+        "contador": contador,
     }
 
 if __name__ == "__main__":
