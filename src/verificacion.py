@@ -221,7 +221,8 @@ def generar_solucion_csv(x_final, x_exact_frac, ruta_salida):
 
             # Si no hay ningun digito defendible igual mostramos 1 cifra para que el formato funcione
             cifras = max(digitos, 1)
-            valor_formateado = f"{x_final[i]:.{cifras}g}"
+            # El # conserva los ceros finales, para que se vean las cifras que afirmamos
+            valor_formateado = f"{x_final[i]:#.{cifras}g}"
 
             # i + 1 para que se vea x1..x12, como en el enunciado
             nombre = "x" + str(i + 1)
