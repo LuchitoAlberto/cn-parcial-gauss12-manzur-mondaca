@@ -182,6 +182,38 @@ def eliminar(A, b, convertir=float, pivotear=False):
         "contador": contador,
     }
 
+def ceros_bajo_diagonal(matriz):
+    ceros = 0
+    for i in range(len(matriz)):
+        for j in range(i):
+            if matriz[i][j] == 0:
+                ceros += 1
+    return ceros
+
+def escribir_traza(corrida, ruta, titulo):
+    # Escribimos la matriz tras cada paso de la eliminacion en notacion cientifica para asegurarnos de la precision
+    with open(ruta, "w", encoding="utf-8") as archivo:
+        archivo.write(f"Traza de la eliminacion gaussiana - {titulo}\n")
+        archivo.write(f"Permutacion de filas (orden final): {corrida['permutacion']}\n\n")
+
+        for k in range(len(corrida["traza"])):
+            matriz = corrida["traza"][k]
+            archivo.write(f"Paso {k + 1} de {len(corrida['traza'])}\n")
+
+            for fila in matriz:
+                linea = ""
+                for valor in fila:
+                    linea += f"{float(valor):>14.6e} "
+                archivo.write(linea + "\n")
+
+            ceros = ceros_bajo_diagonal(matriz)
+            archivo.write(f"0's bajo la diagonal tras este paso: {ceros}\n\n")
+
+        # El ultimo paso debe dejar los 66 ceros
+        total = ceros_bajo_diagonal(corrida["traza"][-1])
+        archivo.write(f"Total de 0's bajo la diagonal: {total} (esperado: 66)\n")
+
+
 if __name__ == "__main__":
     A = leer_matriz_a()
     b = leer_vector_b()
@@ -201,11 +233,7 @@ if __name__ == "__main__":
                 assert producto == A[corrida["permutacion"][i]][j], f"{nombre}: L * U no coincide con A en ({i}, {j})"
 
         # Comprobamos los 66 0's bajo la diagonal
-        ceros = 0
-        for i in range(n):
-            for j in range(i):
-                if corrida["U"][i][j] == 0:
-                    ceros += 1
+        ceros = ceros_bajo_diagonal(corrida["U"])
         assert ceros == 66, f"{nombre}: no hay 66 0's bajo la diagonal, hay {ceros}"
 
     # Ambas soluciones exactas deben ser identicas
