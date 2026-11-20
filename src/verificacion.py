@@ -1,50 +1,86 @@
-from typing import Tuple, list, Dict
-from decimal import Decimal
-
+import csv
+import math
 import numpy as np
 from mpmath import mp
 
-digitos_extendidos = 50
+mp.dps = 80
 
-def decimal_a_mpf(valor_decimal: Decimal) -> mp.mpf:
-    return mp.mpf(str(valor_decimal))
+def fraccion_a_mpf(frac):
+    return mp.mpf(frac.numerator) / mp.mpf(frac.denominator)
 
-def float_a_mpf(valor_float: float) -> mp.mpf:
-    decimal_exacto = Decimal.from_float(valor_float)
-    return mp.mpf(str(decimal_exacto))
+def resolver_con_lu(L, U, permutacion, rhs):
+    n = len(rhs)
+    rhs_perm = []
 
-def matriz_dec_a_mpf(A_dec: list[list[Decimal]]) -> list[list[mp.mpf]]:
-    A_mp = list[list[mp.mpf]] = []
-    for fila in A_dec:
-        fila_mpf: list[mp.mpf] = []
-        for valor in fila:
-            fila_mpf.append(decimal_a_mpf(valor))
-        A_mp.append(fila_mpf)
-    return A_mp
+    y = []
+    for i in range(n):
+        rhs_perm.append(rhs[permutacion[i]])
+        for j in range(i):
+            suma = suma - L[i][j] * y[j]
+        y.append(suma)
 
-def vector_dec_a_mpf(b_dec: list[Decimal]) -> list[mp.mpf]:
-    b_mp = list[mp.mpf] = []
-    for valor in b_dec:
-        b_mp.append(decimal_a_mpf(valor))
-    return b_mp
+    d = []
+    for i in range(n):
+        d.append(0,0)
 
-def residuo_extendido(A_dec: list[list[mp.mpf]], b_dec: list[mp.mpf], x_mp: list[mp.mpf]) -> Tuple[list[mp.mpf], mp.mpf]:
-    mp.dps = digitos_extendidos
-    n = len(b_dec)
-    A_mp = matriz_dec_a_mpf(A_dec)
-    b_mp = vector_dec_a_mpf(b_dec)
+    for i in range(n - 1, -1, -1):
+        suma = y[i]
+        for j in range(i + 1, n):
+            suma = suma - U[i][j] * d[j]
+        d[i] = suma / U[i][i]
+    return d
 
-    r: list[mp.mpf] = []
+def calcular_residuo_extendido(A_frac, b_frac, x_eval):
+    n = len(b_frac)
+    residuo = []
     norma_inf = mp.mpf("0")
 
     for i in range(n):
-        producto = mp.mpf("0")
+        ax_i = mp.mpf("0")
         for j in range(n):
-            producto = producto + A_mp[i][j] * x_mp[j]
-        ri = b_mp[i] - producto
-        r.append(ri)
-        abs_ri = abs(ri)
-        if abs_ri > norma_inf:
-            norma_inf = abs_ri 
-    return r, norma_inf
-   
+            a_ij = fraccion_a_mpf(A_frac[i][j])
+            x_j = mp.mpf(x_eval[j])
+            ax_i = ax_i + a_ij * x_j
+        b_i = fraccion_a_mpf(b_frac[i])
+        r_i = b_i - ax_i
+        residuo.append(r_i)
+        if abs(r_i) > norma_inf:
+            norma_inf = abs(r_i)
+    return residuo, norma_inf
+
+def refinamiento_iterativo(A_frac, b_frac, doble_piv, pasadas=2):
+    n = len(b_frac)
+    x_actual = []
+    for val in doble_piv["x"]:
+        x_actual.append(val)
+    L = doble_piv["L"]
+    U = doble_piv["U"]
+    perm = doble_piv["permutacion"]
+
+    historial = []
+    for p in range(pasadas):
+        r_mp, norma_antes = calcular_residuo_extendido(A_frac, b_frac, x_actual)
+        r_float = []
+        for val_mp in r_mp:
+            r_float.append(float(val_mp))
+
+        correccion = resolver_con_lu(L, U, perm, r_float)
+        x_nuevo = []
+        for i in range(n):
+            x_nuevo.append(x_actual[i] + correccion[i])
+
+        norma_despues = calcular_residuo_extendido(A_frac, b_frac, x_nuevo)
+        historial.append({"pasada": p +1, "norma_r_antes": float(norma_antes), "norma_r_despues": float(norma_despues)})
+        x_actual = x_nuevo
+        return x_actual, historial
+
+def norma_infinito_matriz(A_float):
+    max_fila = 0.0
+    for fila in A_float:
+        suma = 0.0
+        for valor in fila:
+            suma = suma + abs(valor)
+        if suma > max_fila:
+            max_fila = suma
+    return max_fila
+
