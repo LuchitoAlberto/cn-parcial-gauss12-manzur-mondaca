@@ -192,7 +192,7 @@ def generar_solucion_csv(x_pivoteo, x_exact_frac, ruta_salida):
         valor_formateado = f"{x_pivoteo[i]:.{digitos}g}"
         nombre = "x" + str(i + 1)
         escritor.writeow([nombre, valor_formateado, digitos])
-        resumen.append((nombre, valor_formateado, digitos, x_pivoteo[i]))4
+        resumen.append((nombre, valor_formateado, digitos, x_pivoteo[i]))
 
     archivo.close()
     return resumen
@@ -209,4 +209,86 @@ def ejecutar_verificacion_completa(A_frac, b_frac, exacto_piv, doble_sin, doble_
         b_float = []
         for valor in b_frac:
             b_float.append(float(valor))
-            
+
+        err_inf_sin, err_2_sin, bits_ok_sin, bits_lost_sin = calcular_error_y_bits(doble_sin["x"], x_exact_frac)
+        err_inf_con, err_2_con, bits_ok_con, bits_lost_con = calcular_error_y_bits(doble_con["x"], x_exact_frac)
+
+        r_sin, norma_r_sin = calcular_residuo_extendido(A_frac, b_frac, doble_sin["x"])
+        r_con, norma_r_con = calcular_residuo_extendido(A_frac, b_frac, doble_con["x"])
+
+        x_refinado, historial_ref = refinamiento_iterativo(A_frac, b_frac, doble_con, pasadas=2)
+        err_inf_ref, err_2_ref, bits_ok_ref, _ = calcular_error_y_bits(x_refinado, x_exact_frac)
+
+        kappa_inf = estimar_kappa_infinito(A_float, doble_con["L"], doble_con["U"], doble_con["permutacion"])
+        det_A = calcular_determinante_desde_u(doble_con["U"], doble_con["intercambios"])
+        eps_mach = 2 ** (-52)
+
+        c3, c5, diff_f7, pert_rel_f7 = detectar_dependencia_fila7(A_frac)
+
+        A_np = np.array(A_float, dtype=np.float64)
+        b_np = np.array(b_float, dtype=np.float64)
+        x_np = np.linalg.solve(A_np, b_np)
+        kappa_2_np = float(np.linalg.cond(A_np, 2))
+        err_inf_np, err_2_np, _, _ = calcular_error_y_bits(x_np.tolist(), x_exact_frac)
+
+        resumen_sol = generar_solucion_csv(doble_con["x"], x_exact_frac, ruta_solucion)
+
+        archivo = open(ruta_residuo, "w", encoding="utf-8")
+        archivo.write(" -- Corridas doble precision --")
+        archivo.write("sin pivoteo:\n")
+        archivo.write("multiplicado_max = " + f"{doble_sin['multiplicador_max']:.6e}\n")
+        archivo.write("crecimiento = " + f"{doble_sin['crecimiento']:.6e}\n")
+        archivo.write("err_rel_2 = " + f"{err_2_sin:.6e}\n")
+        archivo.write("err_rel_inf = " + f"{err_inf_sin:.2f}\n")
+        archivo.write("bits_correctos = " + f"{bits_ok_sin:.2f}\n")
+        archivo.write("bits_perdidos = " + f"{bits_lost_sin:.2f}\n")
+        archivo.write("norma_r_inf = " + f"{float(norma_r_sin):.6e}\n\n")
+
+
+        archivo.write("Con pivoteo parcial escalado:\n")
+        archivo.write("multiplicador_max = " + f"{doble_con['multiplicado_max']:.6e}\n")
+        archivo.write("crecimiento = " + f"{doble_con['crecimiento']:.6e}\n")
+        archivo.write("err_rel_2 = " + f"{err_2_con:.6e}\n")
+        archivo.write("err_rel_inf = " + f"{err_inf_con:.6f}\n")
+        archivo.write("bits_correctos = " + f"{bits_ok_con:.2f}\n")
+        archivo.write("bits_perdidos = " + f"{bits_lost_con:.2f}\n")
+        archivo.write("norma_r_inf = " + f"{float(norma_r_con):.6e}\n\n")
+
+        archivo.write("Vector residuo r = b - Ax")
+
+        for i in range(len(r_con)):
+            archivo.write("r [" + str(i+1) + "] = " + mp.nstr(r_con[i], 20) + "\n")
+        archivo.write("\n")
+
+        archivo.write("Refinamiento iterativo")
+        for i in historial_ref:
+            archivo.write("pasada" + str(i["pasada"]) + ": ||r||_inf" + f"{i['norma_r_antes']:.6e}" + "->" + f"{i['norma_r_despues']:.6e}\n")
+
+        archivo.write("Condicionamiento y estructura")
+        archivo.write("det(A) = " + f"{det_A:.6e}\n")
+        archivo.write("kappa_inf(A) = " + f"{kappa_inf:.6e}\n")
+        archivo.write("kappa_2(A) = " + f"{kappa_2_np:.6e}\n")
+        archivo.write("kappa_2 * eps_mach = " + f"{kappa_2_np * eps_mach:.6e}\n")
+        archivo.write("kappa_inf * eps_mach = " + f"{kappa_inf * eps_mach:.6e}\n")
+        archivo.write("fila7_c3 = " + f"{c3:.8f}\n")
+        archivo.write("fila7_c5 = " + f"{c5:.8f}\n")
+        archivo.write("fila7_diff_inf = " + f"{diff_f7:.6e}\n")
+        archivo.write("fila7_pert_rel = " + f"{pert_rel_f7:.6e}\n\n")
+
+        archivo.write("Control numpy")
+        archivo.write("err_rel_2_numpy = " + f"{err_2_np:.6e}\n")
+        archivo.write("err_rel_inf_numpy = " + f"{err_inf_np:.6e}\n\n")
+
+        archivo.write("Solucion reportada (solucion.csv)\n")
+        for nombre, val_fmt, digitos, val_raw in resumen_sol:
+            archivo.write(
+                "  "
+                + nombre.ljust(4)
+                + " | "
+                + val_fmt.ljust(20)
+                + " | digitos="
+                + str(digitos)
+                + " | float="
+                + f"{val_raw:.16e}\n"
+            )
+        archivo.close()
