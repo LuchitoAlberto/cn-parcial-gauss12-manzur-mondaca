@@ -169,5 +169,3 @@ python -m venv .venv
 ```
 
 src/main.py regenera sin tocar nada a mano los cuatro archivos de resultados/: solucion.csv, traza_eliminacion.txt, conteo_flops.md y residuo.txt.
-
-Fuentes: enunciado del laboratorio (Rubrica.docx, INF-321); Burden y Faires, Numerical Analysis (eliminación y pivoteo escalado); Golub y Van Loan, Matrix Computations (costo 2n³/3, LU y refinamiento iterativo); Higham, Accuracy and Stability of Numerical Algorithms (factor de crecimiento y cota con κ·u); documentación de mpmath y numpy.linalg.solve.
