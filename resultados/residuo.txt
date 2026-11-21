@@ -1,0 +1,54 @@
+== Residuo r = b - Ax (precision extendida, norma infinito) ==
+sin pivoteo: ||r||inf = 1.772e-07
+  multiplicador max = 2.753e+13, crecimiento = 2.641e+03
+  error relativo (inf) = 2.080e-10, (2) = 2.380e-10
+  bits correctos = 32.0, bits de mantisa perdidos = 21.0
+con pivoteo: ||r||inf = 2.291e-10
+  multiplicador max = 2.466e+09, crecimiento = 1.783e+00
+  error relativo (inf) = 2.357e-13, (2) = 2.702e-13
+  bits correctos = 41.8, bits de mantisa perdidos = 11.2
+
+== Vector residuo r = b - Ax (con pivoteo) ==
+r[1] = -8.0768887662808213967e-21
+r[2] = -8.7291144645950889291e-13
+r[3] = -3.5929641666598778933e-18
+r[4] = 4.3970291398924980006e-12
+r[5] = -8.9223300495970657558e-20
+r[6] = 2.2908764384979064701e-10
+r[7] = -1.3907465360769527383e-17
+r[8] = 3.1137635159380338301e-11
+r[9] = -1.8029093061414024746e-20
+r[10] = -3.5666339051994497744e-12
+r[11] = 9.8855112416718748838e-18
+r[12] = 5.1630800096311010297e-11
+
+== Refinamiento iterativo (con pivoteo, reusando L y U) ==
+pasada 1: ||r||inf 2.291e-10 -> 1.366e-22
+pasada 2: ||r||inf 1.366e-22 -> 3.928e-35
+pasada 3: ||r||inf 3.928e-35 -> 1.383e-48
+error relativo tras refinar (2) = 4.842e-51, bits correctos = 167.1
+
+== Condicionamiento ==
+kappa_inf(A) ~ 5.368e+13
+kappa_2(A)   ~ 3.085e+13
+cota kappa_2*eps ~ 3.425e-03
+cota kappa_inf*eps ~ 5.959e-03
+det(A) ~ 1.3646e+09
+fila 7 ~ 4.19496*fila3 + 586.116*fila5, diferencia max = 3.472e-04, perturbacion relativa = 5.482e-03
+
+== Control: numpy.linalg.solve ==
+error relativo (inf) = 2.548e-13, (2) = 2.927e-13, bits correctos = 41.6
+
+== Solucion reportada ==
+x1 = 0.738491562700000  (15 digitos afirmados)
+x2 = -1.20593741680000  (15 digitos afirmados)
+x3 = 0.00438719520000000  (15 digitos afirmados)
+x4 = -0.0917264538000000  (15 digitos afirmados)
+x5 = 2.84610937250000  (15 digitos afirmados)
+x6 = -0.00628154090000000  (15 digitos afirmados)
+x7 = 1.47382059160000  (15 digitos afirmados)
+x8 = -0.0384927164000000  (15 digitos afirmados)
+x9 = 0.915264803700000  (15 digitos afirmados)
+x10 = -2.60713948520000  (15 digitos afirmados)
+x11 = 0.0518736294000000  (15 digitos afirmados)
+x12 = -1.08493716250000  (15 digitos afirmados)
