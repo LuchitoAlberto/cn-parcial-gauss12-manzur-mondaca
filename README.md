@@ -1,95 +1,71 @@
-# El pivote
+# Eliminación gaussiana con pivoteo escalado (sistema 12×12)
 
-### Eliminación gaussiana en un sistema denso 12×12
+Resolvemos un sistema Ax = b de 12×12 con eliminación gaussiana, con pivoteo, y comprobamos la respuesta con más precisión.
 
-Resolución de un sistema lineal denso mal condicionado ($n = 12$) mediante eliminación gaussiana propia con pivoteo parcial escalado, control del costo operacional y verificación en precisión extendida.
-
----
-
-## Autoría y asignatura
-
-| | |
-| :--- | :--- |
-| **Estudiantes** | Luis Manzur · Antonella Mondaca |
-| **Asignatura** | Computación Numérica (INF-321) |
-| **Carrera** | Ingeniería Civil Informática, Universidad Católica del Maule |
-
----
+Luis Manzur y Antonella Mondaca. INF-321 S2 Computación Numérica, Ingeniería Civil Informática, Universidad Católica del Maule.
 
 ## Requisitos
 
-- Python 3.10 o superior.
-- Instalar las dependencias:
+Python 3.10 o más (lo probamos con 3.14.3). Dentro de la carpeta del repo:
 
-```bash
-pip install -r requirements.txt
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
----
+> En Linux o Mac el intérprete es `.venv/bin/python`.
 
-## Ejecución
+## Cómo ejecutarlo
 
-Un solo comando, sin pasos manuales:
-
-```bash
-python src/main.py
+```powershell
+.\.venv\Scripts\python.exe src/main.py
 ```
 
-Al terminar, la carpeta `resultados/` queda regenerada con:
+Un solo comando, sin pasos manuales, y se puede correr desde cualquier carpeta. Crea o reescribe estos archivos en `resultados/`:
 
-| Archivo | Contenido |
-| :--- | :--- |
-| `solucion.csv` | Las 12 incógnitas con los dígitos reportados |
-| `traza_eliminacion.txt` | La matriz tras cada uno de los 11 pasos |
-| `conteo_flops.md` | Tabla de operaciones por paso |
-| `residuo.txt` | Residuo $r = b - Ax$ y su norma infinito |
+| Archivo | Qué tiene |
+|---|---|
+| `solucion.csv` | las 12 incógnitas con los dígitos que afirmamos |
+| `traza_eliminacion.txt` | la matriz después de cada uno de los 11 pasos |
+| `conteo_flops.md` | tabla de operaciones por paso |
+| `residuo.txt` | residuo, refinamiento, condicionamiento y control con numpy |
 
----
-
-## Estructura de carpetas
+## Carpetas
 
 ```text
 cn-parcial-gauss12-manzur-mondaca/
-├─ readme.md          # este archivo
-├─ informe.md         # informe técnico y análisis de error
-├─ requirements.txt   # dependencias con versión fija
-├─ datos/             # matriz A y vector b, sin truncar
-├─ src/               # código fuente (eliminación, conteo, verificación, main)
-└─ resultados/        # salidas generadas por main.py
+├─ README.md             # este archivo
+├─ informe.md            # informe: método, conteo, análisis de error y conclusiones
+├─ requirements.txt      # librerías con versión fija (numpy y mpmath)
+├─ .gitignore            # lo que Git no sube (entorno virtual, __pycache__, etc.)
+├─ datos/
+│  ├─ matriz_a.csv       # matriz A del enunciado (12×12), sin redondear
+│  └─ vector_b.csv       # vector b del enunciado, con sus 20 dígitos
+├─ src/
+│  ├─ gauss.py           # lectura exacta, eliminación (con o sin pivoteo), L y U, traza
+│  ├─ conteo.py          # cuenta las operaciones y arma el reporte de flops
+│  ├─ verificacion.py    # residuo, refinamiento, condicionamiento y control con numpy
+│  └─ main.py            # punto de entrada: llama a todo y genera resultados/
+└─ resultados/           # salidas que genera main.py (tabla de arriba)
 ```
 
----
+## Resultado
 
-## Resultado resumido
+| Incógnita | Valor | Incógnita | Valor |
+|---|---:|---|---:|
+| x1 | 0.7384915627 | x7 | 1.473820592 |
+| x2 | -1.205937417 | x8 | -0.03849271640 |
+| x3 | 0.004387195200 | x9 | 0.9152648037 |
+| x4 | -0.09172645380 | x10 | -2.607139485 |
+| x5 | 2.846109373 | x11 | 0.05187362940 |
+| x6 | -0.006281540900 | x12 | -1.084937163 |
 
-| Incógnita | Valor (10 dígitos) |
-| :--- | :--- |
-| $x_1$ | [PEGAR] |
-| $x_2$ | [PEGAR] |
-| $x_3$ | [PEGAR] |
-| $x_4$ | [PEGAR] |
-| $x_5$ | [PEGAR] |
-| $x_6$ | [PEGAR] |
-| $x_7$ | [PEGAR] |
-| $x_8$ | [PEGAR] |
-| $x_9$ | [PEGAR] |
-| $x_{10}$ | [PEGAR] |
-| $x_{11}$ | [PEGAR] |
-| $x_{12}$ | [PEGAR] |
-
-| Indicador | Valor |
-| :--- | ---: |
-| Total de flops | [PEGAR] |
-| $\lVert r\rVert_\infty$ del residuo | [PEGAR] |
-
----
+Se hicieron **1354 operaciones** en total. La norma infinito del residuo es 2.3e-10 y baja a 1.4e-48 con 3 pasadas de refinamiento.
 
 ## Informe
 
-El análisis completo está en [`informe.md`](informe.md).
+El detalle está en [informe.md](informe.md).
 
----
+## Nota
 
-## Licencia
-
-Trabajo de uso académico para la asignatura Computación Numérica (INF-321), Universidad Católica del Maule.
+Es un trabajo para el ramo INF-321, solo con fines académicos. Usamos IA como ayuda y lo contamos en el informe.
